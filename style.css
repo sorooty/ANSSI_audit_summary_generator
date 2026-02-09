@@ -1,0 +1,481 @@
+/* ==========================================
+   RISKHUNTER DESIGN SYSTEM - 2026
+   Couleurs: Primary #00D4AA | Dark #2d3748
+   Fixes: Contraste texte, lisibilité, accessibilité
+   ========================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --rh-primary: #00D4AA;
+    --rh-primary-hover: #00b894;
+    --rh-dark: #2d3748;
+    --rh-dark-secondary: #1a202c;
+    --rh-dark-tertiary: #4a5568;
+    --rh-light: #ffffff;
+    --rh-light-secondary: #e2e8f0;
+    --rh-text-primary: #f7fafc;
+    --rh-text-secondary: #cbd5e0;
+    --rh-danger: #ff6b6b;
+    --rh-warning: #feca57;
+    --rh-success: #00D4AA;
+    --rh-shadow: rgba(0, 212, 170, 0.15);
+}
+
+/* ========== GLOBAL ========== */
+* {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.stApp {
+    background: linear-gradient(135deg, var(--rh-dark-secondary) 0%, #0f1419 100%);
+    color: var(--rh-text-primary) !important;
+}
+
+/* Force text color globally */
+p, span, div, label, li, td, th {
+    color: var(--rh-text-primary) !important;
+}
+
+/* ========== HEADER ========== */
+header[data-testid="stHeader"] {
+    background: var(--rh-dark);
+    border-bottom: 2px solid var(--rh-primary);
+}
+
+h1 {
+    color: var(--rh-primary) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px;
+    text-shadow: 0 0 20px rgba(0, 212, 170, 0.3);
+}
+
+h2, h3, h4, h5, h6 {
+    color: var(--rh-text-primary) !important;
+    font-weight: 600 !important;
+}
+
+/* ========== SIDEBAR ========== */
+section[data-testid="stSidebar"] {
+    background: var(--rh-dark) !important;
+    border-right: 3px solid var(--rh-primary);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+section[data-testid="stSidebar"] > div {
+    background: var(--rh-dark) !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: var(--rh-text-primary) !important;
+}
+
+section[data-testid="stSidebar"] h2 {
+    color: var(--rh-primary) !important;
+    font-size: 1.2rem;
+    border-bottom: 2px solid var(--rh-primary);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+section[data-testid="stSidebar"] label {
+    color: var(--rh-text-secondary) !important;
+}
+
+/* ========== TABS ========== */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 12px;
+    background: var(--rh-dark);
+    border-radius: 12px;
+    padding: 8px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: transparent;
+    color: var(--rh-text-primary) !important;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    padding: 12px 24px;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: var(--rh-dark-tertiary);
+    border-color: var(--rh-primary);
+    color: var(--rh-light) !important;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(90deg, var(--rh-primary), var(--rh-primary-hover)) !important;
+    color: white !important;
+    border-color: var(--rh-primary) !important;
+    box-shadow: 0 4px 15px var(--rh-shadow);
+}
+
+/* ========== BUTTONS ========== */
+.stButton > button {
+    background: linear-gradient(90deg, var(--rh-primary), var(--rh-primary-hover)) !important;
+    color: grey !important;
+    border: none !important;
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 12px 32px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px var(--rh-shadow);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.9rem;
+}
+
+.stButton > button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 212, 170, 0.4);
+    background: linear-gradient(90deg, var(--rh-primary-hover), var(--rh-primary)) !important;
+}
+
+.stButton > button:active {
+    transform: translateY(-1px);
+}
+
+/* Bouton téléchargement */
+.stDownloadButton > button {
+    background: var(--rh-dark-tertiary) !important;
+    border: 2px solid var(--rh-primary) !important;
+    color: var(--rh-primary) !important;
+}
+
+.stDownloadButton > button:hover {
+    background: var(--rh-primary) !important;
+    color: white !important;
+}
+
+/* ========== INPUTS ========== */
+.stTextInput input,
+.stTextArea textarea,
+.stSelectbox select {
+    background: var(--rh-dark-tertiary) !important;
+    border: 2px solid var(--rh-dark-tertiary) !important;
+    border-radius: 8px !important;
+    color: var(--rh-text-primary) !important;
+    transition: all 0.3s ease;
+}
+
+.stTextInput input::placeholder,
+.stTextArea textarea::placeholder {
+    color: var(--rh-text-secondary) !important;
+}
+
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+.stSelectbox select:focus {
+    border-color: var(--rh-primary) !important;
+    box-shadow: 0 0 0 3px var(--rh-shadow) !important;
+}
+
+.stTextInput label,
+.stTextArea label,
+.stSelectbox label {
+    color: var(--rh-text-primary) !important;
+    font-weight: 500;
+}
+
+/* ========== FILE UPLOADER ========== */
+.stFileUploader {
+    background: var(--rh-dark) !important;
+    border: 2px dashed var(--rh-primary) !important;
+    border-radius: 12px;
+    padding: 30px;
+    transition: all 0.3s ease;
+}
+
+.stFileUploader * {
+    color: var(--rh-text-primary) !important;
+}
+
+.stFileUploader:hover {
+    border-color: var(--rh-primary-hover) !important;
+    background: var(--rh-dark-tertiary) !important;
+    box-shadow: 0 4px 20px var(--rh-shadow);
+}
+
+.stFileUploader section {
+    background: transparent !important;
+}
+
+/* ========== METRICS ========== */
+div[data-testid="metric-container"] {
+    background: var(--rh-dark) !important;
+    border: 2px solid rgba(0, 212, 170, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+div[data-testid="metric-container"]:hover {
+    border-color: var(--rh-primary);
+    box-shadow: 0 8px 30px var(--rh-shadow);
+    transform: translateY(-2px);
+}
+
+div[data-testid="metric-container"] label {
+    color: var(--rh-primary) !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+div[data-testid="metric-container"] [data-testid="stMetricValue"] {
+    color: var(--rh-text-primary) !important;
+    font-size: 2.2rem !important;
+    font-weight: 700 !important;
+}
+
+div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
+    color: var(--rh-text-secondary) !important;
+}
+
+/* ========== EXPANDERS ========== */
+.streamlit-expanderHeader {
+    background: var(--rh-dark) !important;
+    border: 1px solid rgba(0, 212, 170, 0.2) !important;
+    border-radius: 10px !important;
+    color: var(--rh-text-primary) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.streamlit-expanderHeader:hover {
+    background: var(--rh-dark-tertiary) !important;
+    border-color: var(--rh-primary) !important;
+    box-shadow: 0 4px 15px var(--rh-shadow);
+}
+
+.streamlit-expanderContent {
+    background: var(--rh-dark-tertiary) !important;
+    border: 1px solid rgba(0, 212, 170, 0.2);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    color: var(--rh-text-primary) !important;
+}
+
+.streamlit-expanderContent * {
+    color: var(--rh-text-primary) !important;
+}
+
+/* ========== PROGRESS BAR ========== */
+.stProgress > div > div {
+    background: linear-gradient(90deg, var(--rh-primary), var(--rh-primary-hover)) !important;
+    box-shadow: 0 2px 10px var(--rh-shadow);
+}
+
+.stProgress > div {
+    background: var(--rh-dark-tertiary) !important;
+    border-radius: 10px;
+}
+
+/* ========== ALERTS ========== */
+.stAlert {
+    background: var(--rh-dark) !important;
+    border-left: 4px solid var(--rh-primary) !important;
+    border-radius: 8px;
+    color: var(--rh-text-primary) !important;
+}
+
+.stAlert * {
+    color: var(--rh-text-primary) !important;
+}
+
+.stSuccess {
+    border-left-color: var(--rh-success) !important;
+}
+
+.stWarning {
+    border-left-color: var(--rh-warning) !important;
+}
+
+.stError {
+    border-left-color: var(--rh-danger) !important;
+}
+
+/* ========== INFO BOX ========== */
+.stInfo {
+    background: var(--rh-dark) !important;
+    border-left: 4px solid var(--rh-primary) !important;
+    color: var(--rh-text-primary) !important;
+}
+
+.stInfo * {
+    color: var(--rh-text-primary) !important;
+}
+
+/* ========== SPINNER ========== */
+.stSpinner > div {
+    border-color: var(--rh-primary) transparent transparent transparent !important;
+}
+
+/* ========== MARKDOWN ========== */
+.stMarkdown {
+    color: var(--rh-text-primary) !important;
+}
+
+.stMarkdown p, .stMarkdown li, .stMarkdown span {
+    color: var(--rh-text-primary) !important;
+}
+
+.stMarkdown strong {
+    color: var(--rh-primary) !important;
+}
+
+.stMarkdown em {
+    color: var(--rh-text-secondary) !important;
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--rh-dark-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--rh-primary);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--rh-primary-hover);
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* ========== SEPARATORS ========== */
+hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--rh-primary), transparent);
+    margin: 30px 0;
+}
+
+/* ========== CODE BLOCKS ========== */
+code {
+    background: var(--rh-dark-tertiary) !important;
+    color: var(--rh-primary) !important;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+}
+
+pre {
+    background: var(--rh-dark) !important;
+    border: 1px solid rgba(0, 212, 170, 0.2);
+    border-radius: 8px;
+    color: var(--rh-text-primary) !important;
+}
+
+pre code {
+    color: var(--rh-text-primary) !important;
+}
+
+/* ========== DATAFRAME / TABLES ========== */
+.stDataFrame {
+    background: var(--rh-dark) !important;
+}
+
+.stDataFrame table {
+    color: var(--rh-text-primary) !important;
+}
+
+.stDataFrame th {
+    background: var(--rh-dark-tertiary) !important;
+    color: var(--rh-primary) !important;
+}
+
+.stDataFrame td {
+    color: var(--rh-text-primary) !important;
+}
+
+/* ========== STATUS MESSAGES ========== */
+.stStatus {
+    background: var(--rh-dark) !important;
+    color: var(--rh-text-primary) !important;
+}
+
+.stStatus * {
+    color: var(--rh-text-primary) !important;
+}
+
+/* ========== FIXES SPECIFIQUES ========== */
+
+/* Fix pour les labels de formulaire */
+label[data-testid="stWidgetLabel"] {
+    color: var(--rh-text-primary) !important;
+}
+
+/* Fix pour les options de sélecteur */
+.stSelectbox option {
+    background: var(--rh-dark) !important;
+    color: var(--rh-text-primary) !important;
+}
+
+/* Fix pour le texte dans les colonnes */
+.element-container {
+    color: var(--rh-text-primary) !important;
+}
+
+/* Fix pour le footer */
+footer {
+    color: var(--rh-text-secondary) !important;
+}
+
+footer * {
+    color: var(--rh-text-secondary) !important;
+}
+
+/* Fix pour les tooltips */
+.stTooltipIcon {
+    color: var(--rh-primary) !important;
+}
+
+/* Fix pour le drag & drop */
+[data-testid="stFileUploadDropzone"] {
+    background: var(--rh-dark) !important;
+    border: 2px dashed var(--rh-primary) !important;
+}
+
+[data-testid="stFileUploadDropzone"] * {
+    color: var(--rh-text-primary) !important;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.8rem !important;
+    }
+    
+    .stButton > button {
+        padding: 10px 20px;
+        font-size: 0.8rem;
+    }
+    
+    div[data-testid="metric-container"] {
+        padding: 16px;
+    }
+}
