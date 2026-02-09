@@ -12,6 +12,10 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import os
 import base64
+from dotenv import load_dotenv
+
+# charger les variables d'environnement depuis un fichier .env
+load_dotenv()   
 
 os.environ['STREAMLIT_SERVER_ENABLE_STATIC_SERVING'] = 'true'
 

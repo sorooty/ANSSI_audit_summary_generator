@@ -1,0 +1,57 @@
+﻿# ==========================================
+# RISKHUNTER - GITIGNORE
+# ==========================================
+
+# Environnement virtuel
+venv/
+env/
+ENV/
+.venv
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Cache application
+.cache/
+.streamlit/
+
+# Secrets et config
+.env
+.env.local
+*.key
+*.pem
+
+# Logs
+logs/
+*.log
+
+# Exports temporaires
+exports/*.json
+exports/*.txt
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backups
+*.bak
+*.backup
+versions/
+
+# Documentation build
+_build/
+dist/
+build/
