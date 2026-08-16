@@ -1,4 +1,4 @@
-# RiskHunter - Atelier 1 : Optimisation d'Audits ANSSI
+# Optimisation - Génération de résumés d'Audits ANSSI
 
 Application Streamlit pour la génération automatique de résumés d'audits cybersécurité ANSSI via LLM (ChatGPT 4o).
 
