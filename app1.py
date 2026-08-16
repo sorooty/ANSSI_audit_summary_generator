@@ -1,21 +1,31 @@
 """
-app_atelier1.py
-Interface Streamlit RiskHunter - Optimisation Audits ANSSI
-Lancement : streamlit run app_atelier1.py
+app_atelier1_v2.py
+Interface Streamlit RiskHunter - Optimisation Audits ANSSI v2.0
+Lancement : streamlit run app_atelier1_v2.py
+
+Nouveautés v2.0:
+- Liste dynamique ANSSI avec filtres
+- Graphiques Plotly interactifs
+- Heatmap de conformité
+- Distribution par chapitre
+- Affichages améliorés
 """
 
 import streamlit as st
 import json
 from pathlib import Path
-from typing import List
-from dataclasses import dataclass, asdict
+from typing import List, Dict
+from dataclasses import dataclass
 from datetime import datetime
 import os
-import base64
 from dotenv import load_dotenv
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from collections import Counter
 
-# charger les variables d'environnement depuis un fichier .env
-load_dotenv()   
+# Charger .env
+load_dotenv()
 
 os.environ['STREAMLIT_SERVER_ENABLE_STATIC_SERVING'] = 'true'
 
@@ -28,20 +38,18 @@ except ImportError:
 
 # Configuration Streamlit
 st.set_page_config(
-    page_title="RiskHunter - Atelier 1 ANSSI",
+    page_title="RiskHunter - Atelier 1 ANSSI v2.0",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Chargement CSS personnalisé
+# Chargement CSS
 def load_css():
     css_file = Path("style.css")
     if css_file.exists():
         with open(css_file) as f:
             st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-    else:
-        st.warning("Fichier style.css introuvable - styles par défaut appliqués")
 
 load_css()
 
@@ -52,70 +60,226 @@ CHAPTER_ID_TO_ROMAN = {
     "6": "VI", "7": "VII", "8": "VIII", "9": "IX", "10": "X"
 }
 
-# Référentiel ANSSI (version compacte pour l'interface)
+# Référentiel ANSSI complet
 ANSSI_FRAMEWORK = {
-    "I": {"title": "I - Sensibiliser et former", "requirements": {
-        "1.1": {"title": "Former les équipes opérationnelles", "description": "Formations continues sur risques, authentification, durcissement..."},
-        "1.2": {"title": "Sensibiliser les utilisateurs", "description": "Sensibilisation régulière, charte informatique signée..."},
-        "1.3": {"title": "Maîtriser l'infogérance", "description": "Évaluer risques, exigences contractuelles, surveillance prestataire..."}
-    }},
-    "II": {"title": "II - Connaître le SI", "requirements": {
-        "2.1": {"title": "Schéma réseau et actifs sensibles", "description": "Cartographie complète, inventaire exhaustif..."},
-        "2.2": {"title": "Inventaire comptes à privilèges", "description": "Inventaire nominatif, revue périodique..."},
-        "2.3": {"title": "Gestion cycle de vie utilisateurs", "description": "Procédures arrivées/départs, droits d'accès..."},
-        "2.4": {"title": "Équipements maîtrisés uniquement", "description": "Interdire équipements personnels, Wi-Fi isolé..."}
-    }},
-    "III": {"title": "III - Authentifier et contrôler", "requirements": {
-        "3.1": {"title": "Moindre privilège", "description": "Droits strictement nécessaires..."},
-        "3.2": {"title": "Restreindre ressources sensibles", "description": "Contrôle d'accès strict..."},
-        "3.3": {"title": "Mots de passe robustes", "description": "12+ caractères, complexité..."},
-        "3.4": {"title": "Authentification forte MFA", "description": "MFA pour accès distant et privilèges..."},
-        "3.5": {"title": "Changer éléments par défaut", "description": "Identifiants/mots de passe par défaut..."},
-        "3.6": {"title": "Journaliser comptes privilèges", "description": "Centralisation logs, conservation 6 mois..."}
-    }},
-    "IV": {"title": "IV - Postes de travail", "requirements": {
-        "4.1": {"title": "Niveau sécurité minimal", "description": "Pare-feu, antivirus, chiffrement..."},
-        "4.2": {"title": "Protection supports amovibles", "description": "Sensibilisation, blocage USB..."},
-        "4.3": {"title": "Gestion centralisée", "description": "GPO, MDM..."},
-        "4.4": {"title": "Pare-feu local", "description": "Activé, liste blanche..."},
-        "4.5": {"title": "Chiffrement transmissions", "description": "HTTPS, SFTP, S/MIME..."}
-    }},
-    "V": {"title": "V - Réseau", "requirements": {
-        "5.1": {"title": "Segmentation réseau", "description": "VLANs, zones de confiance..."},
-        "5.2": {"title": "Contrôle flux", "description": "Matrice de flux, deny all..."},
-        "5.3": {"title": "Protocoles sécurisés", "description": "HTTPS, SSH, SFTP..."},
-        "5.4": {"title": "Passerelle Internet", "description": "Proxy, filtrage, DMZ..."},
-        "5.5": {"title": "Sécuriser Wi-Fi", "description": "WPA3, 802.1X..."},
-        "5.6": {"title": "Protéger messagerie", "description": "Anti-spam, TLS, SPF/DKIM/DMARC..."},
-        "5.7": {"title": "Interconnexions partenaires", "description": "VPN IPsec, matrice flux..."},
-        "5.8": {"title": "Accès physiques salles serveurs", "description": "Badges, biométrie, vidéosurveillance..."}
-    }},
-    "VI": {"title": "VI - Administration", "requirements": {
-        "6.1": {"title": "Interdire Internet admin", "description": "Pas d'accès Internet direct..."},
-        "6.2": {"title": "Réseau dédié admin", "description": "VLAN dédié, cloisonné..."},
-        "6.3": {"title": "Limiter comptes admin", "description": "Minimum utilisateurs, RBAC..."}
-    }},
-    "VII": {"title": "VII - Nomadisme", "requirements": {
-        "7.1": {"title": "Sensibilisation nomadisme", "description": "Risques vol, perte..."},
-        "7.2": {"title": "Chiffrement nomades", "description": "BitLocker, FileVault..."},
-        "7.3": {"title": "VPN nomadisme", "description": "VPN IPsec, MFA..."},
-        "7.4": {"title": "Messagerie nomade", "description": "IMAPS, MDM, remote wipe..."}
-    }},
-    "VIII": {"title": "VIII - Mises à jour", "requirements": {
-        "8.1": {"title": "Politique mises à jour", "description": "Processus qualification/déploiement..."},
-        "8.2": {"title": "Déployer correctifs", "description": "Critiques <1 mois, autres <3 mois..."}
-    }},
-    "IX": {"title": "IX - Superviser", "requirements": {
-        "9.1": {"title": "Journalisation", "description": "Centralisation, protection logs..."},
-        "9.2": {"title": "Politique sauvegarde", "description": "Hors ligne, tests restauration..."},
-        "9.3": {"title": "Audits réguliers", "description": "Annuels, plan actions..."},
-        "9.4": {"title": "Référent SSI", "description": "RSSI désigné, moyens..."},
-        "9.5": {"title": "Gestion incidents", "description": "Procédure formalisée, CERT..."}
-    }},
-    "X": {"title": "X - Plus loin", "requirements": {
-        "10.1": {"title": "Analyse de risques", "description": "EBIOS RM, ISO 27005..."},
-        "10.2": {"title": "Produits qualifiés ANSSI", "description": "CSPN, PASSI, PRIS, PDIS..."}
-    }}
+    "I": {
+        "title": "I - Sensibiliser et former",
+        "requirements": {
+            "1.1": {
+                "title": "Former les équipes opérationnelles à la sécurité des SI",
+                "description": "Formations initiales et continues adaptées aux métiers sur risques, authentification, durcissement, cloisonnement, journalisation."
+            },
+            "1.2": {
+                "title": "Sensibiliser les utilisateurs aux bonnes pratiques",
+                "description": "Sensibilisation régulière aux enjeux de sécurité, RGPD, consignes quotidiennes. Charte informatique signée."
+            },
+            "1.3": {
+                "title": "Maîtriser les risques liés à l'infogérance",
+                "description": "Évaluer les risques, exigences de sécurité dans les contrats, surveillance du prestataire."
+            }
+        }
+    },
+    "II": {
+        "title": "II - Connaître le système d'information",
+        "requirements": {
+            "2.1": {
+                "title": "Maintenir un schéma du réseau et identifier les actifs sensibles",
+                "description": "Cartographie complète : inventaire actifs, données sensibles, flux réseau, schéma à jour."
+            },
+            "2.2": {
+                "title": "Tenir l'inventaire des comptes à privilèges",
+                "description": "Inventaire nominatif et à jour avec revue périodique. Nomenclature claire."
+            },
+            "2.3": {
+                "title": "Gérer les arrivées, départs et changements de fonctions",
+                "description": "Procédures formalisées de gestion du cycle de vie : création/suppression comptes, droits d'accès."
+            },
+            "2.4": {
+                "title": "Autoriser la connexion aux seuls équipements maîtrisés",
+                "description": "Interdire équipements non autorisés. Wi-Fi invités isolé. Authentification réseau (802.1X)."
+            }
+        }
+    },
+    "III": {
+        "title": "III - Authentifier et contrôler les accès",
+        "requirements": {
+            "3.1": {
+                "title": "Attribuer les droits selon le moindre privilège",
+                "description": "Droits strictement nécessaires. Séparation comptes nominatifs et privilégiés."
+            },
+            "3.2": {
+                "title": "Restreindre l'accès aux ressources sensibles",
+                "description": "Lister ressources sensibles, populations autorisées, contrôle d'accès strict."
+            },
+            "3.3": {
+                "title": "Définir des règles de mots de passe robustes",
+                "description": "Longueur minimale 12 caractères, complexité, blocage après échecs multiples."
+            },
+            "3.4": {
+                "title": "Privilégier une authentification forte (MFA)",
+                "description": "MFA pour accès distant, comptes privilégiés, ressources sensibles."
+            },
+            "3.5": {
+                "title": "Changer les éléments d'authentification par défaut",
+                "description": "Changer systématiquement identifiants/mots de passe par défaut."
+            },
+            "3.6": {
+                "title": "Journaliser l'activité des comptes à privilèges",
+                "description": "Centraliser journalisation, protéger logs, conserver 6 mois minimum."
+            }
+        }
+    },
+    "IV": {
+        "title": "IV - Sécuriser les postes de travail",
+        "requirements": {
+            "4.1": {
+                "title": "Établir un niveau de sécurité minimal du parc",
+                "description": "Pare-feu, anti-virus, chiffrement partitions, désactiver autorun."
+            },
+            "4.2": {
+                "title": "Protéger le parc des supports amovibles",
+                "description": "Sensibilisation, interdiction clés USB inconnues, solutions techniques (AppLocker)."
+            },
+            "4.3": {
+                "title": "Gérer de manière centralisée les politiques de sécurité",
+                "description": "GPO Active Directory ou MDM pour homogénéiser configurations."
+            },
+            "4.4": {
+                "title": "Activer le pare-feu local des postes",
+                "description": "Bloquer par défaut, logique liste blanche, journalisation."
+            },
+            "4.5": {
+                "title": "Chiffrer les données avant transmission Internet",
+                "description": "Chiffrement systématique, protocoles sécurisés (HTTPS, SFTP, S/MIME)."
+            }
+        }
+    },
+    "V": {
+        "title": "V - Sécuriser le réseau",
+        "requirements": {
+            "5.1": {
+                "title": "Segmenter le réseau en zones de confiance",
+                "description": "VLANs, sous-réseaux, pare-feux entre zones."
+            },
+            "5.2": {
+                "title": "Contrôler les flux réseaux",
+                "description": "Matrice de flux, moindre privilège, bloquer par défaut."
+            },
+            "5.3": {
+                "title": "Utiliser des protocoles réseau sécurisés",
+                "description": "Remplacer HTTP, FTP, TELNET par HTTPS, SFTP, SSH."
+            },
+            "5.4": {
+                "title": "Installer une passerelle sécurisée pour Internet",
+                "description": "Proxy, filtrage contenus malveillants, DMZ."
+            },
+            "5.5": {
+                "title": "Sécuriser les accès Wi-Fi",
+                "description": "WPA3 ou WPA2-Enterprise avec 802.1X."
+            },
+            "5.6": {
+                "title": "Protéger la messagerie électronique",
+                "description": "Anti-spam, anti-virus, TLS, SPF/DKIM/DMARC."
+            },
+            "5.7": {
+                "title": "Sécuriser les interconnexions avec partenaires",
+                "description": "Tunnels IPsec conformes ANSSI, matrice de flux."
+            },
+            "5.8": {
+                "title": "Contrôler les accès physiques aux salles serveurs",
+                "description": "Badges, biométrie, vidéosurveillance, traçabilité."
+            }
+        }
+    },
+    "VI": {
+        "title": "VI - Sécuriser l'administration",
+        "requirements": {
+            "6.1": {
+                "title": "Interdire Internet depuis les postes d'administration",
+                "description": "Pas d'accès direct Internet, mises à jour via serveurs internes."
+            },
+            "6.2": {
+                "title": "Utiliser un réseau dédié pour l'administration",
+                "description": "Réseau physiquement séparé ou VLAN cloisonné."
+            },
+            "6.3": {
+                "title": "Limiter les comptes à privilèges d'administration",
+                "description": "Minimum d'utilisateurs, délégation de droits spécifiques."
+            }
+        }
+    },
+    "VII": {
+        "title": "VII - Gérer le nomadisme",
+        "requirements": {
+            "7.1": {
+                "title": "Sensibiliser aux risques physiques des terminaux nomades",
+                "description": "Vol, perte, espionnage visuel, verrouillage systématique."
+            },
+            "7.2": {
+                "title": "Chiffrer les données sur terminaux nomades",
+                "description": "Chiffrement complet disque (BitLocker, FileVault, LUKS)."
+            },
+            "7.3": {
+                "title": "Utiliser un VPN pour les connexions nomades",
+                "description": "VPN IPsec conforme ANSSI, MFA."
+            },
+            "7.4": {
+                "title": "Sécuriser l'accès messagerie depuis terminaux nomades",
+                "description": "Protocoles chiffrés, MFA, effacement à distance (MDM)."
+            }
+        }
+    },
+    "VIII": {
+        "title": "VIII - Maintenir à jour",
+        "requirements": {
+            "8.1": {
+                "title": "Définir une politique de mises à jour de sécurité",
+                "description": "Inventaire composants, veille vulnérabilités, processus qualification/déploiement."
+            },
+            "8.2": {
+                "title": "Mettre à jour régulièrement logiciels et systèmes",
+                "description": "Correctifs critiques sous 1 mois, autres sous 3 mois."
+            }
+        }
+    },
+    "IX": {
+        "title": "IX - Superviser, auditer, réagir",
+        "requirements": {
+            "9.1": {
+                "title": "Journaliser et protéger les journaux",
+                "description": "Centralisation logs, protection contre modification, conservation 6 mois."
+            },
+            "9.2": {
+                "title": "Définir une politique de sauvegarde",
+                "description": "Identifier données vitales, supports hors ligne, tests restauration."
+            },
+            "9.3": {
+                "title": "Réaliser des audits réguliers",
+                "description": "Audits annuels, plan d'actions correctives."
+            },
+            "9.4": {
+                "title": "Désigner un référent SSI",
+                "description": "RSSI avec moyens et prérogatives nécessaires."
+            },
+            "9.5": {
+                "title": "Établir une procédure de gestion des incidents",
+                "description": "Détection, qualification, traitement, REX formalisés."
+            }
+        }
+    },
+    "X": {
+        "title": "X - Pour aller plus loin",
+        "requirements": {
+            "10.1": {
+                "title": "Effectuer une analyse de risques formelle",
+                "description": "Méthode reconnue (EBIOS RM, ISO 27005), mise à jour régulière."
+            },
+            "10.2": {
+                "title": "Utiliser des produits qualifiés ANSSI",
+                "description": "Produits et prestataires qualifiés (CSPN, PASSI, PRIS, PDIS)."
+            }
+        }
+    }
 }
 
 @dataclass
@@ -125,7 +289,90 @@ class DeficiencySummary:
     compliance_level: str
     summary: str
 
-# Fonctions utilitaires
+# ========== FONCTIONS GRAPHIQUES ==========
+
+def create_compliance_heatmap(deficiencies: List[dict]) -> go.Figure:
+    """Crée une heatmap de conformité par chapitre."""
+    chapter_data = {}
+    for d in deficiencies:
+        chapter = d['requirement_id'].split('.')[0]
+        level = d['compliance_level']
+        if chapter not in chapter_data:
+            chapter_data[chapter] = {"no": 0, "partially": 0}
+        chapter_data[chapter][level] += 1
+    
+    chapters = sorted(chapter_data.keys(), key=int)
+    no_counts = [chapter_data[c]["no"] for c in chapters]
+    partial_counts = [chapter_data[c]["partially"] for c in chapters]
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name='Non conforme',
+        x=[f"Chapitre {CHAPTER_ID_TO_ROMAN.get(c, c)}" for c in chapters],
+        y=no_counts,
+        marker_color='#ff6b6b',
+        text=no_counts,
+        textposition='auto'
+    ))
+    fig.add_trace(go.Bar(
+        name='Partiellement conforme',
+        x=[f"Chapitre {CHAPTER_ID_TO_ROMAN.get(c, c)}" for c in chapters],
+        y=partial_counts,
+        marker_color='#feca57',
+        text=partial_counts,
+        textposition='auto'
+    ))
+    
+    fig.update_layout(
+        title="Distribution des Défaillances par Chapitre ANSSI",
+        xaxis_title="Chapitres",
+        yaxis_title="Nombre de défaillances",
+        barmode='stack',
+        template='plotly_dark',
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#f7fafc', size=12),
+        height=400
+    )
+    return fig
+
+def create_severity_pie(deficiencies: List[dict]) -> go.Figure:
+    """Crée un pie chart des niveaux de sévérité."""
+    severity_counts = Counter([d['compliance_level'] for d in deficiencies])
+    
+    fig = go.Figure(data=[go.Pie(
+        labels=['Non conforme', 'Partiellement conforme'],
+        values=[severity_counts.get('no', 0), severity_counts.get('partially', 0)],
+        hole=0.4,
+        marker_colors=['#ff6b6b', '#feca57'],
+        textinfo='label+percent+value',
+        textfont_size=14
+    )])
+    
+    fig.update_layout(
+        title="Répartition par Niveau de Conformité",
+        template='plotly_dark',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#f7fafc'),
+        height=400,
+        showlegend=True
+    )
+    return fig
+
+def create_requirements_table(deficiencies: List[dict]) -> pd.DataFrame:
+    """Crée un DataFrame pour affichage tableau."""
+    data = []
+    for d in deficiencies:
+        data.append({
+            "ID": d['requirement_id'],
+            "Titre": d['requirement_title'],
+            "Conformité": "❌ Non conforme" if d['compliance_level'] == 'no' else "⚠️ Partiel",
+            "Risques": d['induced_risks'][:50] + "..." if len(d['induced_risks']) > 50 else d['induced_risks']
+        })
+    return pd.DataFrame(data)
+
+# ========== FONCTIONS LLM ==========
+
 def extract_deficiencies(audit_json: dict) -> List[dict]:
     """Extrait les défaillances du JSON audit."""
     deficiencies = []
@@ -137,7 +384,6 @@ def extract_deficiencies(audit_json: dict) -> List[dict]:
         
         for req_num, req_data in requirements.items():
             compliance = req_data.get('compliance', '')
-            
             if compliance not in NON_COMPLIANT_LEVELS:
                 continue
             
@@ -153,7 +399,6 @@ def extract_deficiencies(audit_json: dict) -> List[dict]:
             
             action_plan_obj = gap_sheet.get('complianceActionPlan', {})
             action_plan = action_plan_obj.get('gapAnalysis', '') if isinstance(action_plan_obj, dict) else ''
-            
             induced_risks = gap_sheet.get('inducedRisks', '')
             
             deficiencies.append({
@@ -169,57 +414,33 @@ def extract_deficiencies(audit_json: dict) -> List[dict]:
     return deficiencies
 
 def generate_summary_gpt4o(deficiency: dict, api_key: str) -> str:
-    """
-    Génère un résumé structuré d'une défaillance ANSSI via GPT-4o.
-    
-    Args:
-        deficiency: Dictionnaire contenant les détails de la défaillance
-        api_key: Clé API OpenAI
-        
-    Returns:
-        Résumé texte (4-5 lignes) ou message d'erreur
-    """
+    """Génère un résumé via GPT-4o."""
     if not OPENAI_AVAILABLE:
         return "Erreur : Module OpenAI non disponible"
     
     client = OpenAI(api_key=api_key)
     
-    # Construction du contexte structuré
-    requirement_id = deficiency.get('requirement_id', 'N/A')
-    requirement_title = deficiency.get('requirement_title', 'N/A')
-    compliance_level = deficiency.get('compliance_level', 'N/A')
-    justification = deficiency.get('justification', 'Not specified')
-    gap_description = deficiency.get('gap_description', 'Not specified')
-    induced_risks = deficiency.get('induced_risks', 'Not specified')
-    action_plan = deficiency.get('action_plan', 'Not specified')
-    
-    # System prompt (rôle + contraintes)
-    system_prompt = """You are a senior cybersecurity auditor specialized in ANSSI (French National Cybersecurity Agency) compliance frameworks.
-
-Your task is to generate concise, factual summaries of security deficiencies for executive reporting.
+    system_prompt = """You are a senior cybersecurity auditor specialized in ANSSI compliance.
 
 Output requirements:
 - Write in French
-- Maximum 4-5 lines (100 words max)
-- Focus on: what is missing, concrete risks, required actions
-- Use professional, non-alarmist tone
-- Be specific and actionable"""
+- Maximum 4-5 lines (100 words)
+- Focus on: gap, risk, action
+- Professional tone"""
 
-    # User prompt (données + instructions)
-    user_prompt = f"""Analyze this ANSSI compliance deficiency and provide a concise executive summary:
+    user_prompt = f"""Analyze this ANSSI deficiency:
 
-**Requirement**: {requirement_id} - {requirement_title}
-**Compliance Level**: {compliance_level}
-**Justification**: {justification[:500]}
-**Gap Description**: {gap_description[:500]}
-**Induced Risks**: {induced_risks[:500]}
-**Action Plan**: {action_plan[:500]}
+**Requirement**: {deficiency.get('requirement_id')} - {deficiency.get('requirement_title')}
+**Compliance**: {deficiency.get('compliance_level')}
+**Justification**: {deficiency.get('justification', '')[:500]}
+**Gap**: {deficiency.get('gap_description', '')[:500]}
+**Risks**: {deficiency.get('induced_risks', '')[:500]}
+**Actions**: {deficiency.get('action_plan', '')[:500]}
 
-Generate a 4-5 line summary in French covering:
-1. What specific control is deficient
-2. Main security gap identified
-3. Primary risk exposure
-4. Recommended remediation priority
+Generate 4-5 line summary in French:
+1. What is deficient
+2. Main risk
+3. Recommended action
 
 Summary:"""
 
@@ -231,68 +452,36 @@ Summary:"""
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.3,
-            max_tokens=300,
-            top_p=0.95,
-            frequency_penalty=0.2,
-            presence_penalty=0.1
+            max_tokens=300
         )
         return response.choices[0].message.content.strip()
-    
     except Exception as e:
-        return f"Erreur API OpenAI : {str(e)}"
+        return f"Erreur : {str(e)}"
 
-
-def generate_executive_synthesis(summaries_text: str, api_key: str, total_deficiencies: int = 0) -> str:
-    """
-    Génère une synthèse exécutive globale via GPT-4o.
-    
-    Args:
-        summaries_text: Agrégation de tous les résumés individuels
-        api_key: Clé API OpenAI
-        total_deficiencies: Nombre total de défaillances
-        
-    Returns:
-        Synthèse exécutive (25-30 lignes) ou message d'erreur
-    """
+def generate_executive_synthesis(summaries_text: str, api_key: str, total: int = 0) -> str:
+    """Génère synthèse exécutive."""
     if not OPENAI_AVAILABLE:
         return "Erreur : Module OpenAI non disponible"
     
     client = OpenAI(api_key=api_key)
     
-    # Limitation de la taille du contexte (éviter dépassement tokens)
-    summaries_truncated = summaries_text[:8000]
-    
-    # System prompt
-    system_prompt = """You are a Chief Information Security Officer (CISO) preparing an executive summary for the board of directors.
+    system_prompt = """You are a CISO preparing executive summary.
 
-Your task is to synthesize multiple cybersecurity audit findings into a high-level strategic assessment.
+Output:
+- French
+- 25-30 lines (300 words)
+- Structure: Posture → Domains → Risks → Recommendations
+- Executive language"""
 
-Output requirements:
-- Write in French
-- 25-30 lines maximum (500 words)
-- Structure: Current posture → Critical domains → Priority risks → Strategic recommendations
-- Use executive language (avoid technical jargon)
-- Provide actionable insights with business impact context
-- Maintain neutral, objective tone"""
+    user_prompt = f"""Based on {total} ANSSI deficiencies, create executive summary:
 
-    # User prompt
-    user_prompt = f"""Based on the following {total_deficiencies} ANSSI compliance deficiencies, create a strategic executive summary:
+{summaries_text[:8000]}
 
----
-{summaries_truncated}
----
-
-Generate a 15-20 line executive summary in French structured as follows:
-
-1. **Overall Security Posture** (2-3 lines): Current compliance maturity level, general assessment
-
-2. **Critical Domains** (4-5 lines): Top 3 security domains with most significant gaps (e.g., access control, network security, training)
-
-3. **Priority Risks** (4-5 lines): Most severe risks to business operations, data confidentiality, regulatory compliance
-
-4. **Strategic Recommendations** (4-5 lines): Top 3 remediation priorities with estimated effort/impact ratio
-
-Focus on business impact and strategic decision-making, not technical details.
+Generate 15-20 line summary in French:
+1. Overall Posture (2-3 lines)
+2. Critical Domains (4-5 lines)
+3. Priority Risks (4-5 lines)
+4. Recommendations (4-5 lines)
 
 Executive Summary:"""
 
@@ -304,37 +493,29 @@ Executive Summary:"""
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.4,
-            max_tokens=800,
-            top_p=0.9,
-            frequency_penalty=0.3,
-            presence_penalty=0.2
+            max_tokens=800
         )
         return response.choices[0].message.content.strip()
-    
     except Exception as e:
-        return f"Erreur API OpenAI : {str(e)}"
-
+        return f"Erreur : {str(e)}"
 
 # ========== INTERFACE ==========
 
-# Header avec logo
+# Header
 col_logo, col_title = st.columns([1, 4])
 with col_logo:
     logo_path = Path("assets/RiskHunterLogo.jpg")
     if logo_path.exists():
         st.image(str(logo_path), width=120)
 with col_title:
-    st.title("🛡️ RiskHunter - Atelier 1 ANSSI")
-    st.markdown("**Optimisation d'audits cybersécurité avec IA**")
+    st.title("🛡️ RiskHunter - Atelier 1 ANSSI v2.0")
+    st.markdown("**Optimisation d'audits cybersécurité avec IA + Analytics**")
 
 st.markdown("---")
 
 # Sidebar
 with st.sidebar:
-    # st.image("https://via.placeholder.com/250x80/1a2332/00D4AA?text=RiskHunter", use_container_width=True)
-    
     st.header("⚙️ Configuration")
-    
     api_key = st.text_input("🔑 Clé API OpenAI", type="password", value=os.environ.get("OPENAI_API_KEY", ""))
     
     if not api_key:
@@ -345,194 +526,183 @@ with st.sidebar:
         st.success("✅ Prêt")
     
     st.markdown("---")
+    st.markdown("### 📋 Référentiel ANSSI")
     
-    st.markdown("### 📋 Référentiel")
+    # Liste dynamique des chapitres
+    with st.expander("📖 Explorer les 10 Chapitres"):
+        for chapter_id, chapter_info in ANSSI_FRAMEWORK.items():
+            st.markdown(f"**{chapter_info['title']}**")
+            for req_id, req_info in chapter_info['requirements'].items():
+                st.markdown(f"- `{req_id}` {req_info['title']}")
+                st.caption(req_info['description'])
+            st.markdown("---")
+    
     st.info(f"""
-    **Framework** : ANSSI Hygiène v2.0  
-    **Exigences** : {sum(len(c['requirements']) for c in ANSSI_FRAMEWORK.values())}  
+    **Total Exigences** : {sum(len(c['requirements']) for c in ANSSI_FRAMEWORK.values())}  
     **Chapitres** : 10
     """)
-    
-    st.markdown("---")
-    
-    st.markdown("### 📖 Guide")
-    with st.expander("ℹ️ Comment utiliser"):
-        st.markdown("""
-        **Étape 1** : Charger JSON audit  
-        **Étape 2** : Extraire défaillances  
-        **Étape 3** : Générer résumés IA  
-        **Étape 4** : Télécharger résultats
-        """)
 
-# Tabs principales
-tab1, tab2, tab3 = st.tabs(["📤 Import & Extraction", "🤖 Génération Résumés", "📊 Résultats"])
+# Tabs
+tab1, tab2, tab3, tab4 = st.tabs(["📤 Import", "📊 Analytics", "🤖 Génération IA", "💾 Résultats"])
 
 # ========== TAB 1: IMPORT ==========
 with tab1:
-    st.header("📤 Import du JSON d'audit ANSSI")
-    
-    uploaded_file = st.file_uploader(
-        "📁 Glissez-déposez votre fichier JSON RiskHunter", 
-        type=['json', 'txt'],
-        help="Format accepté : JSON d'audit RiskHunter"
-    )
+    st.header("📤 Import & Extraction")
+    uploaded_file = st.file_uploader("📁 Fichier JSON RiskHunter", type=['json', 'txt'])
     
     if uploaded_file:
         try:
             audit_data = json.load(uploaded_file)
-            
             if isinstance(audit_data, list):
                 audit_data = audit_data[0]
             
-            st.success(f"✅ Audit chargé : **{audit_data.get('title', 'Sans titre')}**")
+            st.success(f"✅ **{audit_data.get('title', 'Sans titre')}**")
             
-            # Métadonnées
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("👤 Client", audit_data.get('customerName', 'N/A'))
+                st.metric("Client", audit_data.get('customerName', 'N/A'))
             with col2:
-                st.metric("📅 Début", audit_data.get('startDate', 'N/A'))
+                st.metric("Début", audit_data.get('startDate', 'N/A'))
             with col3:
-                st.metric("📅 Fin", audit_data.get('endDate', 'N/A'))
+                st.metric("Fin", audit_data.get('endDate', 'N/A'))
             with col4:
-                st.metric("📋 Type", audit_data.get('type', 'N/A'))
+                st.metric("Type", audit_data.get('type', 'N/A'))
             
             st.markdown("---")
-            st.subheader("🔍 Extraction des défaillances")
-            
-            if st.button("🚀 Lancer l'extraction", type="primary", use_container_width=True):
-                with st.spinner("⏳ Analyse en cours..."):
+            if st.button("🚀 Extraire Défaillances", type="primary", use_container_width=True):
+                with st.spinner("Analyse..."):
                     deficiencies = extract_deficiencies(audit_data)
                     st.session_state['deficiencies'] = deficiencies
                     st.session_state['audit_data'] = audit_data
                 
                 st.success(f"✅ **{len(deficiencies)} défaillances** identifiées")
                 
-                # Statistiques
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("📊 Total", len(deficiencies), delta=None)
+                    st.metric("Total", len(deficiencies))
                 with col2:
                     no_count = sum(1 for d in deficiencies if d['compliance_level'] == 'no')
-                    st.metric("❌ Non conforme", no_count, delta=f"-{no_count}", delta_color="inverse")
+                    st.metric("Non conforme", no_count, delta=f"-{no_count}", delta_color="inverse")
                 with col3:
-                    partial_count = sum(1 for d in deficiencies if d['compliance_level'] == 'partially')
-                    st.metric("⚠️ Partiel", partial_count, delta=f"-{partial_count}", delta_color="inverse")
-                
-                # Aperçu
-                st.markdown("---")
-                st.markdown("### 👁️ Aperçu des défaillances")
-                
-                for i, def_item in enumerate(deficiencies[:5]):
-                    severity_emoji = "❌" if def_item['compliance_level'] == 'no' else "⚠️"
-                    with st.expander(f"{severity_emoji} **{def_item['requirement_id']}** - {def_item['requirement_title']}"):
-                        st.markdown(f"**🎯 Conformité** : `{def_item['compliance_level']}`")
-                        st.markdown(f"**📝 Justification** : {def_item['justification'][:300]}...")
-                
-                if len(deficiencies) > 5:
-                    st.info(f"💡 **{len(deficiencies) - 5}** autres défaillances disponibles")
+                    partial = sum(1 for d in deficiencies if d['compliance_level'] == 'partially')
+                    st.metric("Partiel", partial, delta=f"-{partial}", delta_color="inverse")
         
         except Exception as e:
-            st.error(f"❌ Erreur lors du chargement : `{str(e)}`")
+            st.error(f"❌ Erreur : `{str(e)}`")
 
-# ========== TAB 2: GÉNÉRATION ==========
+# ========== TAB 2: ANALYTICS ==========
 with tab2:
-    st.header("🤖 Génération des résumés IA")
+    st.header("📊 Analytics & Visualisations")
     
     if 'deficiencies' not in st.session_state:
-        st.warning("⚠️ Veuillez d'abord extraire les défaillances dans l'onglet **Import & Extraction**")
-    elif not api_key:
-        st.warning("⚠️ Veuillez saisir votre clé API OpenAI dans la sidebar")
-    elif not OPENAI_AVAILABLE:
-        st.error("❌ Module OpenAI non installé. Exécutez : `pip install openai`")
+        st.warning("⚠️ Extraire les défaillances d'abord")
     else:
         deficiencies = st.session_state['deficiencies']
         
-        st.info(f"🎯 **{len(deficiencies)} défaillances** prêtes pour traitement IA")
-        
-        col1, col2 = st.columns([3, 1])
+        # Graphiques
+        col1, col2 = st.columns(2)
         with col1:
-            st.markdown(f"""
-            **Modèle** : GPT-4o  
-            **Tokens estimés** : ~{len(deficiencies) * 300}  
-            **Durée estimée** : ~{len(deficiencies) * 2}s
-            """)
+            fig_heatmap = create_compliance_heatmap(deficiencies)
+            st.plotly_chart(fig_heatmap, use_container_width=True)
         with col2:
-            if st.button("🚀 Générer", type="primary", use_container_width=True):
-                summaries = []
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                for i, deficiency in enumerate(deficiencies):
-                    status_text.markdown(f"⏳ **Traitement {i+1}/{len(deficiencies)}** : `{deficiency['requirement_id']}`")
-                    progress_bar.progress((i + 1) / len(deficiencies))
-                    
-                    summary_text = generate_summary_gpt4o(deficiency, api_key)
-                    
-                    summaries.append(DeficiencySummary(
-                        requirement_id=deficiency['requirement_id'],
-                        requirement_title=deficiency['requirement_title'],
-                        compliance_level=deficiency['compliance_level'],
-                        summary=summary_text
-                    ))
-                
-                st.session_state['summaries'] = summaries
-                status_text.empty()
-                progress_bar.empty()
-                
-                st.success(f"✅ **{len(summaries)} résumés** générés avec succès")
-                
-                # Aperçu
-                st.markdown("---")
-                st.markdown("### 👁️ Aperçu des résumés IA")
-                
-                for summary in summaries[:3]:
-                    severity_emoji = "❌" if summary.compliance_level == 'no' else "⚠️"
-                    with st.expander(f"{severity_emoji} **{summary.requirement_id}** - {summary.requirement_title}"):
-                        st.markdown(summary.summary)
-                
-                if len(summaries) > 3:
-                    st.info(f"💡 **{len(summaries) - 3}** autres résumés disponibles")
+            fig_pie = create_severity_pie(deficiencies)
+            st.plotly_chart(fig_pie, use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("📋 Liste Détaillée des Défaillances")
+        
+        # Filtres
+        col1, col2 = st.columns(2)
+        with col1:
+            filter_compliance = st.multiselect(
+                "Filtrer par conformité",
+                options=["no", "partially"],
+                default=["no", "partially"],
+                format_func=lambda x: "❌ Non conforme" if x == "no" else "⚠️ Partiel"
+            )
+        with col2:
+            chapters_available = sorted(set([d['requirement_id'].split('.')[0] for d in deficiencies]), key=int)
+            filter_chapters = st.multiselect(
+                "Filtrer par chapitre",
+                options=chapters_available,
+                default=chapters_available,
+                format_func=lambda x: f"Chapitre {CHAPTER_ID_TO_ROMAN.get(x, x)}"
+            )
+        
+        # Appliquer filtres
+        filtered = [
+            d for d in deficiencies
+            if d['compliance_level'] in filter_compliance
+            and d['requirement_id'].split('.')[0] in filter_chapters
+        ]
+        
+        st.info(f"📊 **{len(filtered)}/{len(deficiencies)}** défaillances affichées")
+        
+        # Table
+        df = create_requirements_table(filtered)
+        st.dataframe(df, use_container_width=True, height=400)
 
-# ========== TAB 3: RÉSULTATS ==========
+# ========== TAB 3: GÉNÉRATION ==========
 with tab3:
-    st.header("📊 Résultats et Export")
+    st.header("🤖 Génération Résumés IA")
+    
+    if 'deficiencies' not in st.session_state:
+        st.warning("⚠️ Extraire les défaillances d'abord")
+    elif not api_key or not OPENAI_AVAILABLE:
+        st.warning("⚠️ Configurer OpenAI")
+    else:
+        deficiencies = st.session_state['deficiencies']
+        st.info(f"🎯 **{len(deficiencies)} défaillances** prêtes")
+        
+        if st.button("🚀 Générer Résumés IA", type="primary", use_container_width=True):
+            summaries = []
+            progress_bar = st.progress(0)
+            status = st.empty()
+            
+            for i, d in enumerate(deficiencies):
+                status.markdown(f"⏳ **{i+1}/{len(deficiencies)}** : `{d['requirement_id']}`")
+                progress_bar.progress((i + 1) / len(deficiencies))
+                
+                summary = generate_summary_gpt4o(d, api_key)
+                summaries.append(DeficiencySummary(
+                    requirement_id=d['requirement_id'],
+                    requirement_title=d['requirement_title'],
+                    compliance_level=d['compliance_level'],
+                    summary=summary
+                ))
+            
+            st.session_state['summaries'] = summaries
+            status.empty()
+            progress_bar.empty()
+            st.success(f"✅ **{len(summaries)} résumés** générés")
+
+# ========== TAB 4: RÉSULTATS ==========
+with tab4:
+    st.header("💾 Résultats & Export")
     
     if 'summaries' not in st.session_state:
-        st.warning("⚠️ Veuillez d'abord générer les résumés dans l'onglet **Génération Résumés**")
+        st.warning("⚠️ Générer les résumés d'abord")
     elif not api_key:
-        st.warning("⚠️ Veuillez saisir votre clé API OpenAI")
+        st.warning("⚠️ Clé API requise")
     else:
         summaries = st.session_state['summaries']
         
-        # Synthèse exécutive
-        st.subheader("📝 Synthèse exécutive")
-        
-        if st.button("🧠 Générer la synthèse globale", type="primary", use_container_width=True):
-            with st.spinner("⏳ Génération de la synthèse exécutive..."):
-                aggregated = "\n\n".join([
-                    f"[{s.requirement_id}] {s.requirement_title}\n{s.summary}"
-                    for s in summaries
-                ])
-                
-                executive_synthesis = generate_executive_synthesis(aggregated, api_key)
-                st.session_state['executive_synthesis'] = executive_synthesis
-            
-            st.success("✅ Synthèse exécutive générée")
+        if st.button("🧠 Synthèse Exécutive", type="primary", use_container_width=True):
+            with st.spinner("Génération..."):
+                text = "\n\n".join([f"[{s.requirement_id}] {s.requirement_title}\n{s.summary}" for s in summaries])
+                synthesis = generate_executive_synthesis(text, api_key, len(summaries))
+                st.session_state['executive_synthesis'] = synthesis
+            st.success("✅ Synthèse générée")
         
         if 'executive_synthesis' in st.session_state:
             st.markdown("---")
-            st.markdown("### 📋 Synthèse Exécutive")
             st.info(st.session_state['executive_synthesis'])
             
-            # Export
             st.markdown("---")
             st.subheader("💾 Téléchargements")
             
-            col1, col2, col3 = st.columns(3)
-            
+            col1, col2 = st.columns(2)
             with col1:
-                # JSON optimisé
                 cleaned_data = {
                     "schema_version": "1.0",
                     "audit_metadata": {
@@ -541,19 +711,15 @@ with tab3:
                         "total_deficiencies": len(summaries)
                     },
                     "deficiencies": [
-                        {
-                            "requirement_id": s.requirement_id,
-                            "requirement_title": s.requirement_title,
-                            "compliance_level": s.compliance_level,
-                            "summary": s.summary
-                        }
+                        {"requirement_id": s.requirement_id, "requirement_title": s.requirement_title,
+                         "compliance_level": s.compliance_level, "summary": s.summary}
                         for s in summaries
                     ],
                     "executive_synthesis": st.session_state['executive_synthesis']
                 }
                 
                 st.download_button(
-                    label="📥 JSON Optimisé",
+                    "📥 JSON Optimisé",
                     data=json.dumps(cleaned_data, ensure_ascii=False, indent=2),
                     file_name=f"RH_survey_{datetime.now().strftime('%Y%m%d')}.json",
                     mime="application/json",
@@ -561,64 +727,28 @@ with tab3:
                 )
             
             with col2:
-                # Résumés TXT
-                full_text = "RISKHUNTER - AUDIT ANSSI - SYNTHÈSE DES DÉFAILLANCES\n" + "="*80 + "\n\n"
-                for s in summaries:
-                    full_text += f"[{s.requirement_id}] {s.requirement_title}\n"
-                    full_text += f"{s.summary}\n" + "-"*80 + "\n\n"
-                
-                st.download_button(
-                    label="📥 Résumés TXT",
-                    data=full_text,
-                    file_name=f"RH_summaries_{datetime.now().strftime('%Y%m%d')}.txt",
-                    mime="text/plain",
-                    use_container_width=True
-                )
-            
-            with col3:
-                # Synthèse Markdown
                 md_content = f"""# Synthèse Exécutive - Audit ANSSI
-**Framework** : ANSSI Hygiène v2.0  
-**Date** : {datetime.now().strftime('%Y-%m-%d')}  
+**Framework** : ANSSI Hygiène v2.0
+**Date** : {datetime.now().strftime('%Y-%m-%d')}
 **Défaillances** : {len(summaries)}
 
 ---
 
 {st.session_state['executive_synthesis']}
 """
-                
                 st.download_button(
-                    label="📥 Synthèse MD",
+                    "📥 Synthèse MD",
                     data=md_content,
                     file_name=f"RH_synthesis_{datetime.now().strftime('%Y%m%d')}.md",
                     mime="text/markdown",
                     use_container_width=True
                 )
-            
-            # Métriques
-            st.markdown("---")
-            st.subheader("📈 Métriques d'optimisation")
-            
-            if 'audit_data' in st.session_state:
-                original_size = len(json.dumps(st.session_state['audit_data']))
-                cleaned_size = len(json.dumps(cleaned_data))
-                compression = (1 - cleaned_size/original_size) * 100
-                
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("📦 Original", f"{original_size/1024:.1f} KB")
-                with col2:
-                    st.metric("✨ Optimisé", f"{cleaned_size/1024:.1f} KB")
-                with col3:
-                    st.metric("💾 Compression", f"{compression:.1f}%", delta=f"-{compression:.0f}%")
-                with col4:
-                    st.metric("🎯 Résumés", len(summaries))
 
 # Footer
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: #00D4AA; font-size: 0.9rem;'>
-    🛡️ <strong>RiskHunter</strong> | Powered by AI & ANSSI Framework v2.0  
-    <em style='color: #f0f4f8;'>Optimisation d'audits cybersécurité</em>
+<div style='text-align: center; color: #00D4AA;'>
+    🛡️ <strong>RiskHunter v2.0</strong> | Powered by AI & ANSSI Framework  
+    <em style='color: #f0f4f8;'>Analytics + Optimisation cybersécurité</em>
 </div>
 """, unsafe_allow_html=True)
